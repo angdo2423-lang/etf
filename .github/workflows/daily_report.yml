@@ -1,0 +1,30 @@
+name: Daily ETF Report (Naver)
+
+on:
+  schedule:
+    # 한국시간 오전 9시 10분 실행 (UTC 00:10)
+    - cron: '10 0 * * *'
+  workflow_dispatch: # 직접 실행해보기 버튼 생성
+
+jobs:
+  run_analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v3
+
+      - name: 파이썬 설정
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: 라이브러리 설치
+        run: |
+          pip install pandas requests openpyxl
+
+      - name: 스크립트 실행
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
+          RECEIVER_EMAIL: ${{ secrets.RECEIVER_EMAIL }}
+        run: python main.py
