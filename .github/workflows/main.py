@@ -7,57 +7,42 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
 
-def get_pdf_data(date_str):
-    url = f"https://timeetf.co.kr/pdf_excel.php?idx=2&cate=&pdfDate={date_str}"
-    headers = {'User-Agent': 'Mozilla/5.0'}
-    try:
-        res = requests.get(url, headers=headers, timeout=15)
-        if res.status_code == 200 and len(res.content) > 1000:
-            # bytes 데이터를 BytesIO로 감싸서 전달
-            return pd.read_excel(io.BytesIO(res.content))
-    except Exception as e:
-        print(f"데이터 로드 실패 ({date_str}): {str(e)}")
-    return None
+# ... (get_pdf_data 함수는 그대로 유지) ...
 
-def send_naver_email(subject, body):
-    # 환경변수를 읽어올 때 기본값으로 빈 문자열 설정
-    sender_email = os.environ.get('EMAIL_USER', '')
-    sender_pass = os.environ.get('EMAIL_PASS', '')
-    receiver_email = os.environ.get('RECEIVER_EMAIL', '')
+def send_naver_email(subject, html_body):
+    user = os.environ.get('EMAIL_USER', '').strip()
+    pw = os.environ.get('EMAIL_PASS', '').strip()
+    to = os.environ.get('RECEIVER_EMAIL', '').strip()
 
-    if not sender_email or not sender_pass:
-        print("❌ 에러: Secrets(ID/PW)를 찾을 수 없습니다. 설정 확인 필수!")
+    if not user or not pw:
+        print("❌ [설정오류] GitHub Secrets 값이 비어있습니다.")
         return
 
     msg = MIMEMultipart()
-    msg['From'] = sender_email
-    msg['To'] = receiver_email
+    msg['From'] = user
+    msg['To'] = to
     msg['Subject'] = subject
-    # 본문(body)을 확실하게 str 타입으로 변환하여 인코딩 설정
-    msg.attach(MIMEText(str(body), 'plain', 'utf-8'))
+    
+    # [수정] 메일 형식을 'html'로 설정
+    msg.attach(MIMEText(html_body, 'html', 'utf-8'))
 
     try:
-        # SMTP_SSL을 사용하여 네이버 서버 연결
         with smtplib.SMTP_SSL("smtp.naver.com", 465) as server:
-            server.login(sender_email, sender_pass)
-            server.send_message(msg)
-        print("✅ 네이버 메일 발송 성공!")
+            server.login(user, pw)
+            server.sendmail(user, to, msg.as_string())
+        print("✅ HTML 메일 발송 성공!")
     except Exception as e:
-        # 에러 메시지를 강제로 문자열로 변환하여 출력
-        print(f"❌ 메일 발송 중 실제 에러 발생: {str(e)}")
+        print(f"❌ 메일 발송 실패: {str(e)}")
 
-# 실행부
-today = datetime.now()
-today_str = today.strftime('%Y-%m-%d')
-yesterday_str = (today - timedelta(days=1)).strftime('%Y-%m-%d')
+# --- 실행 로직 ---
+today_str = datetime.now().strftime('%Y-%m-%d')
+yesterday_str = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
 
 df_today = get_pdf_data(today_str)
 df_yesterday = get_pdf_data(yesterday_str)
 
 if df_today is not None and df_yesterday is not None:
-    # 컬럼명 처리 (비중% vs 비중)
     col_name = '비중(%)' if '비중(%)' in df_today.columns else '비중'
-    
     t_sub = df_today[['종목명', col_name]].rename(columns={col_name: '오늘(%)'})
     y_sub = df_yesterday[['종목명', col_name]].rename(columns={col_name: '어제(%)'})
     
@@ -65,11 +50,35 @@ if df_today is not None and df_yesterday is not None:
     merged['증감(P)'] = merged['오늘(%)'] - merged['어제(%)']
     result = merged.sort_values(by='오늘(%)', ascending=False).head(30).round(2)
     
-    # 텍스트로 변환
-    content = f"🚀 TIME 미국나스닥100 액티브 분석 ({today_str})\n"
-    content += "-" * 50 + "\n"
-    content += result.to_string(index=False)
+    # [추가] HTML 스타일 지정 (표 테두리, 폰트 등)
+    html_style = """
+    <style>
+        table { border-collapse: collapse; width: 100%; max-width: 600px; font-family: sans-serif; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        th { background-color: #f2f2f2; }
+        .plus { color: red; }
+        .minus { color: blue; }
+    </style>
+    """
     
-    send_naver_email(f"[ETF 분석] {today_str} 포트폴리오 변동 현황", content)
+    # [추가] 데이터프레임을 HTML 표로 변환
+    html_table = result.to_html(index=False, classes='etf_table')
+    
+    # 최종 HTML 본문 구성
+    full_html = f"""
+    <html>
+    <head>{html_style}</head>
+    <body>
+        <h2>🚀 ETF 포트폴리오 분석 리포트</h2>
+        <p>날짜: {today_str}</p>
+        <hr>
+        {html_table}
+        <br>
+        <p style='font-size: 12px; color: #888;'>* 본 메일은 GitHub Actions를 통해 자동 발송되었습니다.</p>
+    </body>
+    </html>
+    """
+    
+    send_naver_email(f"[ETF 분석] {today_str} 리포트", full_html)
 else:
-    print(f"❌ {today_str} 데이터를 불러오지 못했습니다. 장 시작 전이거나 데이터 미업데이트 상태입니다.")
+    print(f"❌ {today_str} 데이터를 가져올 수 없습니다.")
