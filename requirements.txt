@@ -2,3 +2,4 @@ pandas
 requests
 openpyxl
 python-telegram-bot
+jinja2
