@@ -80,7 +80,7 @@ def run_analysis():
                 if val < 0: return 'color: #0275d8; font-weight: bold;'  # 파랑
             return 'color: #333;'
 
-        # 스타일 적용
+        # 스타일 적용 (map 사용 및 format 수정)
         styled_result = result.style \
             .map(color_pick, subset=['증감(P)']) \
             .format("{:.2f}", subset=['오늘(%)', '어제(%)', '증감(P)']) \
@@ -89,30 +89,115 @@ def run_analysis():
         # CSS 스타일 시트
         html_style = """
         <style>
-            .report-container { font-family: 'Malgun Gothic', dotum, sans-serif; line-height: 1.6; color: #333; }
-            table { border-collapse: collapse; width: 100%; max-width: 600px; margin-top: 10px; font-size: 14px; }
-            th { background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 12px; text-align: center; border-bottom: 2px solid #ccc; }
-            td { border: 1px solid #dee2e6; padding: 10px; text-align: right; }
-            td:first-child { text-align: left; background-color: #fafafa; font-weight: bold; }
-            .header-info { margin-bottom: 20px; padding: 15px; background-color: #f1f3f5; border-radius: 5px; }
+            body { 
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Malgun Gothic', Arial, sans-serif; 
+                background-color: #f5f7fa;
+                padding: 20px;
+            }
+            .report-container { 
+                max-width: 800px;
+                margin: 0 auto;
+                background-color: white;
+                border-radius: 12px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                padding: 30px;
+            }
+            .header-info { 
+                margin-bottom: 30px;
+                padding: 20px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                border-radius: 8px;
+                color: white;
+            }
+            .header-info h2 {
+                margin: 0 0 8px 0;
+                font-size: 24px;
+                font-weight: 700;
+            }
+            .header-info p {
+                margin: 0;
+                opacity: 0.95;
+                font-size: 14px;
+            }
+            table { 
+                border-collapse: separate;
+                border-spacing: 0;
+                width: 100%;
+                margin-top: 20px;
+                font-size: 13px;
+                border: 1px solid #e1e8ed;
+                border-radius: 8px;
+                overflow: hidden;
+            }
+            thead th { 
+                background-color: #f8f9fc;
+                color: #2d3748;
+                font-weight: 600;
+                padding: 14px 12px;
+                text-align: center;
+                border-bottom: 2px solid #e1e8ed;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            tbody tr {
+                transition: background-color 0.2s;
+            }
+            tbody tr:hover {
+                background-color: #f7fafc;
+            }
+            tbody tr:nth-child(even) {
+                background-color: #fcfcfd;
+            }
+            td { 
+                padding: 12px;
+                text-align: right;
+                border-bottom: 1px solid #f0f0f0;
+                color: #2d3748;
+            }
+            td:first-child { 
+                text-align: left;
+                font-weight: 600;
+                color: #1a202c;
+                max-width: 250px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            tbody tr:last-child td {
+                border-bottom: none;
+            }
+            .footer-note {
+                margin-top: 25px;
+                padding-top: 20px;
+                border-top: 1px solid #e1e8ed;
+                font-size: 12px;
+                color: #718096;
+                text-align: center;
+            }
         </style>
         """
 
         html_table = styled_result.to_html()
 
         full_html = f"""
+        <!DOCTYPE html>
         <html>
-        <head>{html_style}</head>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            {html_style}
+        </head>
         <body>
             <div class="report-container">
                 <div class="header-info">
-                    <h2 style="margin:0; color:#212529;">🚀 TIME 미국나스닥100 액티브 분석</h2>
-                    <p style="margin:5px 0 0 0; color:#666;">데이터 기준일: <b>{today_str}</b></p>
+                    <h2>🚀 TIME 미국나스닥100 액티브 분석</h2>
+                    <p>데이터 기준일: <b>{today_str}</b></p>
                 </div>
                 {html_table}
-                <p style="font-size: 12px; color: #999; margin-top: 20px;">
-                    * 본 메일은 GitHub Actions를 통해 자동으로 생성 및 발송되었습니다.
-                </p>
+                <div class="footer-note">
+                    📊 본 메일은 GitHub Actions를 통해 자동으로 생성되었습니다.
+                </div>
             </div>
         </body>
         </html>
