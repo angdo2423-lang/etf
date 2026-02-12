@@ -76,15 +76,15 @@ def run_analysis():
         # --- HTML 표 스타일링 ---
         def color_pick(val):
             if isinstance(val, (int, float)):
-                if val > 0: return 'color: #d9534f; font-weight: bold;' # 빨강
-                if val < 0: return 'color: #0275d8; font-weight: bold;' # 파랑
+                if val > 0: return 'color: #d9534f; font-weight: bold;'  # 빨강
+                if val < 0: return 'color: #0275d8; font-weight: bold;'  # 파랑
             return 'color: #333;'
 
-        # 스타일 적용 (applymap -> map으로 수정하여 경고 해결)
-        # .format 시 subset을 지정하여 문자열인 '종목명'은 건너뛰도록 수정 (핵심 해결책)
-        styled_result = result.style.map(color_pick, subset=['증감(P)']) \
-                                    .format(precision=2, subset=['오늘(%)', '어제(%)', '증감(P)']) \
-                                    .hide(axis='index')
+        # 스타일 적용 (map 사용 및 format 수정)
+        styled_result = result.style \
+            .map(color_pick, subset=['증감(P)']) \
+            .format("{:.2f}", subset=['오늘(%)', '어제(%)', '증감(P)']) \
+            .hide(axis='index')
 
         # CSS 스타일 시트
         html_style = """
