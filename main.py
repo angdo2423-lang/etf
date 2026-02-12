@@ -13,35 +13,32 @@ def get_pdf_data(date_str):
     headers = {'User-Agent': 'Mozilla/5.0'}
     try:
         res = requests.get(url, headers=headers, timeout=15)
+        # 데이터가 정상적으로 수신되었는지 확인 (최소 크기 체크)
         if res.status_code == 200 and len(res.content) > 1000:
-            # bytes 데이터를 BytesIO로 읽어서 엑셀 변환
             return pd.read_excel(io.BytesIO(res.content))
     except Exception as e:
         print(f"데이터 로딩 에러 ({date_str}): {str(e)}")
     return None
 
-# 2. 네이버 메일 발송 함수 (HTML 지원)
+# 2. 네이버 메일 발송 함수
 def send_naver_email(subject, html_body):
     user = os.environ.get('EMAIL_USER', '').strip()
     pw = os.environ.get('EMAIL_PASS', '').strip()
     to = os.environ.get('RECEIVER_EMAIL', '').strip()
 
     if not user or not pw or not to:
-        print("❌ [설정오류] GitHub Secrets 값이 비어있습니다. Repository Secrets를 확인하세요.")
+        print("❌ [설정오류] GitHub Secrets 값이 비어있습니다.")
         return
 
     msg = MIMEMultipart()
     msg['From'] = user
     msg['To'] = to
     msg['Subject'] = subject
-    
-    # HTML 형식으로 본문 부착
     msg.attach(MIMEText(html_body, 'html', 'utf-8'))
 
     try:
         with smtplib.SMTP_SSL("smtp.naver.com", 465) as server:
             server.login(user, pw)
-            # RFC-5322 규격을 준수하기 위해 sendmail 방식 사용
             server.sendmail(user, to, msg.as_string())
         print("✅ 네이버 메일 발송 성공!")
     except Exception as e:
@@ -65,21 +62,29 @@ def run_analysis():
         t_sub = df_today[['종목명', col_name]].rename(columns={col_name: '오늘(%)'})
         y_sub = df_yesterday[['종목명', col_name]].rename(columns={col_name: '어제(%)'})
         
+        # 데이터 병합 및 전처리
         merged = pd.merge(t_sub, y_sub, on='종목명', how='outer').fillna(0)
+        
+        # 숫자 타입 강제 변환 (문자열이 섞여 있어 발생하는 ValueError 방지)
+        num_cols = ['오늘(%)', '어제(%)']
+        for col in num_cols:
+            merged[col] = pd.to_numeric(merged[col], errors='coerce').fillna(0)
+            
         merged['증감(P)'] = merged['오늘(%)'] - merged['어제(%)']
-        result = merged.sort_values(by='오늘(%)', ascending=False).head(30).round(2)
+        result = merged.sort_values(by='오늘(%)', ascending=False).head(30)
         
         # --- HTML 표 스타일링 ---
-        # 증감에 따른 색상 정의 함수
         def color_pick(val):
-            if val > 0: return 'color: #d9534f; font-weight: bold;' # 빨강 (상승)
-            if val < 0: return 'color: #0275d8; font-weight: bold;' # 파랑 (하락)
-            return 'color: #333;' # 검정 (변동없음)
+            if isinstance(val, (int, float)):
+                if val > 0: return 'color: #d9534f; font-weight: bold;'  # 빨강
+                if val < 0: return 'color: #0275d8; font-weight: bold;'  # 파랑
+            return 'color: #333;'
 
-        # 스타일 적용 (증감 컬럼)
-        styled_result = result.style.applymap(color_pick, subset=['증감(P)']) \
-                                    .format("{:.2f}") \
-                                    .hide(axis='index') # 인덱스 숨기기
+        # 스타일 적용 (map 사용 및 format 수정)
+        styled_result = result.style \
+            .map(color_pick, subset=['증감(P)']) \
+            .format("{:.2f}", subset=['오늘(%)', '어제(%)', '증감(P)']) \
+            .hide(axis='index')
 
         # CSS 스타일 시트
         html_style = """
@@ -88,7 +93,7 @@ def run_analysis():
             table { border-collapse: collapse; width: 100%; max-width: 600px; margin-top: 10px; font-size: 14px; }
             th { background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 12px; text-align: center; border-bottom: 2px solid #ccc; }
             td { border: 1px solid #dee2e6; padding: 10px; text-align: right; }
-            td:first-child { text-align: left; background-color: #fafafa; font-weight: bold; } /* 종목명 열 */
+            td:first-child { text-align: left; background-color: #fafafa; font-weight: bold; }
             .header-info { margin-bottom: 20px; padding: 15px; background-color: #f1f3f5; border-radius: 5px; }
         </style>
         """
@@ -115,7 +120,8 @@ def run_analysis():
         
         send_naver_email(f"[ETF 분석] {today_str} 포트폴리오 리포트", full_html)
     else:
-        print(f"❌ {today_str} 데이터가 아직 업데이트되지 않았습니다.")
+        # 데이터가 없을 때의 로그 출력 강화
+        print(f"⚠️ {today_str} 또는 {yesterday_str} 데이터를 가져오지 못했습니다. 업데이트 전이거나 URL을 확인하세요.")
 
 if __name__ == "__main__":
     run_analysis()
