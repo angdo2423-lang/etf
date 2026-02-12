@@ -80,7 +80,7 @@ def run_analysis():
                 if val < 0: return 'color: #0275d8; font-weight: bold;'  # 파랑
             return 'color: #333;'
 
-        # 스타일 적용 (map 사용 및 format 수정)
+        # 스타일 적용
         styled_result = result.style \
             .map(color_pick, subset=['증감(P)']) \
             .format("{:.2f}", subset=['오늘(%)', '어제(%)', '증감(P)']) \
