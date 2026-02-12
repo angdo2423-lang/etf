@@ -44,7 +44,76 @@ def send_naver_email(subject, html_body):
     except Exception as e:
         print(f"❌ 메일 발송 실패: {str(e)}")
 
-# 3. 데이터 분석 및 HTML 리포트 생성
+# 3. 종목명 한글 변환 딕셔너리
+STOCK_NAME_KR = {
+    'NVIDIA Corp': '엔비디아',
+    'Taiwan Semiconductor Manufacturing Co Ltd': 'TSMC',
+    'Sandisk Corp/DE': '샌디스크',
+    'Alphabet Inc': '구글',
+    'Lumentum Holdings Inc': '루멘텀홀딩스',
+    'Bloom Energy Corp': '블룸에너지',
+    'Tesla Inc': '테슬라',
+    'Alibaba Group Holding Ltd': '알리바바',
+    'Ciena Corp': '시에나',
+    'ASML Holding NV': 'ASML',
+    'NASDAQ 100 E-MINI INDEX MAR 2026': '나스닥100 미니지수',
+    '현금': '현금',
+    'Micron Technology Inc': '마이크론',
+    'Seagate Technology Holdings PLC': '시게이트',
+    'Corning Inc': '코닝',
+    'Rocket Lab Corp': '로켓랩',
+    'GE Vernova Inc': 'GE버노바',
+    'Cameco Corp': '카메코',
+    'AST SpaceMobile Inc': 'AST스페이스모바일',
+    'Meta Platforms Inc': '메타',
+    'FTAI Aviation Ltd': 'FTAI에비에이션',
+    'Intel Corp': '인텔',
+    'Broadcom Inc': '브로드컴',
+    'Planet Labs PBC': '플래닛랩스',
+    'EchoStar Corp': '에코스타',
+    'Walmart Inc': '월마트',
+    'Eli Lilly & Co': '일라이릴리',
+    'Cisco Systems Inc': '시스코',
+    'Apple Inc': '애플',
+    'Vertiv Holdings Co': '버티브홀딩스',
+    'Microsoft Corp': '마이크로소프트',
+    'Amazon.com Inc': '아마존',
+    'Advanced Micro Devices Inc': 'AMD',
+    'Netflix Inc': '넷플릭스',
+    'Qualcomm Inc': '퀄컴',
+    'Oracle Corp': '오라클',
+    'Salesforce Inc': '세일즈포스',
+    'PayPal Holdings Inc': '페이팔',
+    'Adobe Inc': '어도비',
+    'Costco Wholesale Corp': '코스트코',
+    'Comcast Corp': '컴캐스트',
+    'PepsiCo Inc': '펩시',
+    'Texas Instruments Inc': '텍사스인스트루먼트',
+    'T-Mobile US Inc': 'T모바일',
+    'Booking Holdings Inc': '부킹홀딩스',
+    'Intuit Inc': '인튜잇',
+    'Starbucks Corp': '스타벅스',
+    'Amgen Inc': '암젠',
+    'Applied Materials Inc': '어플라이드머티리얼즈',
+    'Lam Research Corp': '램리서치',
+    'KLA Corp': 'KLA',
+    'Synopsys Inc': '시놉시스',
+    'Cadence Design Systems Inc': '케이던스디자인',
+    'Marvell Technology Inc': '마벨테크놀로지',
+    'Analog Devices Inc': '아날로그디바이스',
+    'Mondelez International Inc': '몬델리즈',
+    'Gilead Sciences Inc': '길리어드사이언스',
+    'Regeneron Pharmaceuticals Inc': '리제네론',
+    'AstraZeneca PLC': '아스트라제네카',
+    'Moderna Inc': '모더나',
+    'Vertex Pharmaceuticals Inc': '버텍스파마',
+}
+
+def convert_stock_name(eng_name):
+    """영문 종목명을 한글로 변환"""
+    return STOCK_NAME_KR.get(eng_name, eng_name)
+
+# 4. 데이터 분석 및 HTML 리포트 생성
 def run_analysis():
     today = datetime.now()
     today_str = today.strftime('%Y-%m-%d')
@@ -71,6 +140,10 @@ def run_analysis():
             merged[col] = pd.to_numeric(merged[col], errors='coerce').fillna(0)
             
         merged['증감(P)'] = merged['오늘(%)'] - merged['어제(%)']
+        
+        # 종목명 한글 변환
+        merged['종목명'] = merged['종목명'].apply(convert_stock_name)
+        
         result = merged.sort_values(by='오늘(%)', ascending=False).head(30)
         
         # --- HTML 표 스타일링 ---
