@@ -2,8 +2,7 @@ name: Daily ETF Report (Naver)
 
 on:
   schedule:
-    # 한국시간 오전 9시 10분 실행 (UTC 00:10)
-    - cron: '* * * * *'
+    - cron: '*/5 * * * *'
   workflow_dispatch: # 직접 실행 버튼
 
 jobs:
